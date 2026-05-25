@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "raschka-coding-agent-langgraph"
+version = "0.1.0"
+description = "A LangGraph implementation of the coding-agent architecture described in Sebastian Raschka's 'Components of a Coding Agent'."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Educational use" }
+authors = [{ name = "Brendan Lynskey" }]
+
+dependencies = [
+    "langgraph>=0.2.50",
+    "langchain-core>=0.3.20",
+    "langchain-google-genai>=2.0.0",
+    "langchain-openai>=0.2.10",          # used for DeepSeek (OpenAI-compatible API)
+    "python-dotenv>=1.0.1",
+    "rich>=13.7.0",
+    "pydantic>=2.7.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+]
+
+[project.scripts]
+coding-agent = "coding_agent.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra -q"

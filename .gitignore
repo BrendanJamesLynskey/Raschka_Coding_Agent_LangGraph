@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg
+
+# Environment
+.env
+.env.local
+
+# Trace output (kept ignored — sample trace lives in docs/)
+traces/*.jsonl
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Examples workspace runtime files
+examples/workspace/_runs/
+examples/workspace/greeting.txt
