@@ -27,7 +27,7 @@ What this repo shows, if you are here for the LangGraph / LangChain side:
 * **A hand-built LangGraph state machine.** `StateGraph` over a
   `TypedDict` state, a conditional edge for tool routing, an iteration
   guard, and a compression node. There is no prebuilt agent: the whole
-  loop is about 300 readable lines. The diagram below is generated from
+  loop is under 400 readable lines. The diagram below is generated from
   the compiled graph, and a test fails if it drifts.
 * **Provider-agnostic models.** One `build_chat_model` seam over
   `ChatGoogleGenerativeAI`, `ChatOpenAI` (OpenAI and DeepSeek) and
