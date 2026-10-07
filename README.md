@@ -57,7 +57,7 @@ per component so the mapping is obvious:
 | 3 · Tool Access and Use                  | `src/coding_agent/tools.py`         |
 | 4 · Context Reduction                    | `src/coding_agent/compression.py`   |
 | 5 · Structured Session Memory            | `src/coding_agent/state.py`         |
-| 6 · Delegation with Bounded Subagents    | *(documented as a planned extension)* |
+| 6 · Delegation with Bounded Subagents    | `src/coding_agent/subagents.py`     |
 
 The state machine that ties them together lives in
 [`src/coding_agent/graph.py`](src/coding_agent/graph.py). It is short

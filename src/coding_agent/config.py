@@ -69,6 +69,12 @@ class Settings:
     tool_output_limit: int = 4000
     transcript_compress_at: int = 20
 
+    # --- Subagents (Component 6) -------------------------------------------
+    # Each spawned subagent gets its own, much smaller iteration budget...
+    subagent_max_iterations: int = 4
+    # ...and a parent run may only spawn this many in total.
+    max_subagents: int = 3
+
     # --- Sandbox ------------------------------------------------------------
     # Every file / shell tool is rooted at this directory; paths that try to
     # escape it are rejected. Default is the `examples/workspace/` dir.
@@ -138,6 +144,8 @@ def load_settings(dotenv_path: str | Path | None = None) -> Settings:
         max_iterations=_get_int("CODING_AGENT_MAX_ITERATIONS", 12),
         tool_output_limit=_get_int("CODING_AGENT_TOOL_OUTPUT_LIMIT", 4000),
         transcript_compress_at=_get_int("CODING_AGENT_TRANSCRIPT_COMPRESS_AT", 20),
+        subagent_max_iterations=_get_int("CODING_AGENT_SUBAGENT_MAX_ITERATIONS", 4),
+        max_subagents=_get_int("CODING_AGENT_MAX_SUBAGENTS", 3),
         workspace_root=workspace_root,
         trace_dir=trace_dir,
         trace_stdout=_get_bool("CODING_AGENT_TRACE_STDOUT", True),

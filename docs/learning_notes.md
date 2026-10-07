@@ -164,14 +164,39 @@ confidence of a normal test suite.
 
 ---
 
-## 8 · What's deliberately missing
+## 8 · Why subagents need bounds, not just a prompt
+
+A subagent is the agent loop called *from inside a tool*. That is easy to
+build: `spawn_subagent` just calls `run_agent` again. The design work is
+all in what the child is **not** allowed to do. A prompt saying "only
+read files" is a request. An allowlisted toolset is a guarantee.
+
+* The child can't write or run commands, because those tools are never
+  bound. The model can't call a tool it was never shown, and if it
+  hallucinates one, `act` answers "unknown tool".
+* The child can't spawn its own children. Without a depth limit, a model
+  that loves delegating can fan out exponentially.
+* The child has its own small iteration budget, and the parent has a cap
+  on how many children it may spawn. Together those put a hard ceiling on
+  the cost of a single request.
+* The child's answer is clipped like any other tool output. Delegation
+  exists to keep the parent's context small, and an unclipped answer
+  would defeat it.
+
+One LangChain detail worth knowing: run config (including callbacks)
+flows to nested runnables through a context variable, and explicitly
+passed callbacks are *merged* with the inherited ones. Running the child
+in a fresh `contextvars.Context()` is what keeps its trace separate.
+
+→ Go look at: [`src/coding_agent/subagents.py`](../src/coding_agent/subagents.py)
+
+---
+
+## 9 · What's deliberately missing
 
 Things this repo does not (yet) do, all of which are within scope and
 have natural hooks in the existing code:
 
-* **Subagent delegation.** Wire a `spawn_subagent` tool that compiles
-  the same graph with a tighter `max_iterations` and a sub-directory
-  workspace; return its `final_answer` as the tool result.
 * **Human-in-the-loop approval.** Set `interrupt_before=["act"]` when
   compiling the graph; let the operator approve / edit / reject the
   pending tool calls.
