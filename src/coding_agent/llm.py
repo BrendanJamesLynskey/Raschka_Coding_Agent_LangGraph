@@ -11,6 +11,8 @@ Supported providers
 * ``deepseek`` — DeepSeek's OpenAI-compatible API, reached through
   ``langchain-openai`` with a ``base_url`` override.
 * ``openai``   — OpenAI's own models via ``langchain-openai``.
+* ``ollama``   — Local open-weights models (Qwen by default) served by
+  Ollama, via ``langchain-ollama``. Optional extra: ``pip install -e .[ollama]``.
 * ``fake``     — A scripted in-memory chat model. Pre-load it with the
   ``AIMessage``s you want returned in order. Used in tests and the smoke
   example. No network, no key.
@@ -139,6 +141,47 @@ def build_chat_model(
         if settings.openai_base_url:
             kwargs["base_url"] = settings.openai_base_url
         return ChatOpenAI(**kwargs)
+
+    if settings.provider == "ollama":
+        # Lazy import, and the package lives in an optional extra, so a
+        # missing install gets a pointed message rather than a bare
+        # ModuleNotFoundError from deep inside the factory.
+        try:
+            from langchain_ollama import ChatOllama
+        except ImportError as e:
+            raise RuntimeError(
+                "CODING_AGENT_PROVIDER=ollama but langchain-ollama is not "
+                "installed. Run: pip install -e '.[ollama]'"
+            ) from e
+
+        try:
+            return ChatOllama(
+                model=settings.ollama_model,
+                base_url=settings.ollama_base_url,
+                # Ollama's default window is small and it truncates the
+                # *front* of an over-long prompt without complaint — which
+                # is exactly where our stable system prefix lives. Always
+                # pass num_ctx explicitly.
+                num_ctx=settings.ollama_num_ctx,
+                temperature=0.0,
+                # Ask the server up front whether it is reachable and has
+                # the model pulled. Without this the first sign of trouble
+                # is an httpx.ConnectError mid-graph, inside `choose`.
+                validate_model_on_init=True,
+                callbacks=cbs,
+            )
+        except (ValueError, ConnectionError) as e:
+            # langchain-ollama reports "model not pulled" as ValueError and
+            # *means* to report "server unreachable" the same way — but the
+            # `ollama` client (0.6.x) re-raises httpx's ConnectError as the
+            # builtin ConnectionError, which slips past langchain-ollama's
+            # handler. Catch both and add the two usual fixes.
+            raise RuntimeError(
+                f"Could not use Ollama model {settings.ollama_model!r} at "
+                f"{settings.ollama_base_url}: {e} "
+                "Is `ollama serve` running, and have you run "
+                f"`ollama pull {settings.ollama_model}`?"
+            ) from e
 
     # Should be unreachable thanks to validation in config.load_settings.
     raise ValueError(f"Unsupported provider: {settings.provider!r}")

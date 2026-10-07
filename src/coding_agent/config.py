@@ -20,7 +20,12 @@ from typing import Literal
 
 from dotenv import load_dotenv
 
-Provider = Literal["gemini", "deepseek", "openai", "fake"]
+Provider = Literal["gemini", "deepseek", "openai", "ollama", "fake"]
+
+# Kept next to the Literal so the two can't drift apart unnoticed.
+VALID_PROVIDERS: frozenset[str] = frozenset(
+    {"gemini", "deepseek", "openai", "ollama", "fake"}
+)
 
 
 @dataclass(frozen=True)
@@ -48,6 +53,16 @@ class Settings:
     openai_model: str = "gpt-4o-mini"
     # Empty string means "use the SDK default".
     openai_base_url: str = ""
+
+    # --- Ollama (local open-weights models) --------------------------------
+    # No API key: Ollama is a local server. See docs/providers.md for why
+    # this particular Qwen tag is the default.
+    ollama_model: str = "qwen3.5:9b"
+    ollama_base_url: str = "http://localhost:11434"
+    # Ollama's own default context window is small (a few thousand tokens)
+    # and it *silently truncates* anything longer from the front — which
+    # would eat our stable system prefix first. We always pass num_ctx.
+    ollama_num_ctx: int = 16384
 
     # --- Agent loop ---------------------------------------------------------
     max_iterations: int = 12
@@ -92,10 +107,10 @@ def load_settings(dotenv_path: str | Path | None = None) -> Settings:
     load_dotenv(dotenv_path=dotenv_path, override=False)
 
     provider_raw = os.environ.get("CODING_AGENT_PROVIDER", "fake").strip().lower()
-    if provider_raw not in {"gemini", "deepseek", "openai", "fake"}:
+    if provider_raw not in VALID_PROVIDERS:
         raise ValueError(
             f"Unknown CODING_AGENT_PROVIDER={provider_raw!r}. "
-            "Expected one of: gemini, deepseek, openai, fake."
+            "Expected one of: gemini, deepseek, openai, ollama, fake."
         )
 
     workspace_root = Path(
@@ -115,6 +130,11 @@ def load_settings(dotenv_path: str | Path | None = None) -> Settings:
         openai_api_key=os.environ.get("OPENAI_API_KEY") or None,
         openai_model=os.environ.get("OPENAI_MODEL", "gpt-4o-mini"),
         openai_base_url=os.environ.get("OPENAI_BASE_URL", ""),
+        ollama_model=os.environ.get("OLLAMA_MODEL") or "qwen3.5:9b",
+        ollama_base_url=(
+            os.environ.get("OLLAMA_BASE_URL") or "http://localhost:11434"
+        ),
+        ollama_num_ctx=_get_int("OLLAMA_NUM_CTX", 16384),
         max_iterations=_get_int("CODING_AGENT_MAX_ITERATIONS", 12),
         tool_output_limit=_get_int("CODING_AGENT_TOOL_OUTPUT_LIMIT", 4000),
         transcript_compress_at=_get_int("CODING_AGENT_TRANSCRIPT_COMPRESS_AT", 20),
