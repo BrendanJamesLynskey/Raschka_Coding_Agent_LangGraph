@@ -75,6 +75,11 @@ class Settings:
     # ...and a parent run may only spawn this many in total.
     max_subagents: int = 3
 
+    # --- MCP servers ---------------------------------------------------------
+    # Path to a JSON file of MCP server connections (see mcp_tools.py).
+    # None = no MCP tools.
+    mcp_config: Path | None = None
+
     # --- Sandbox ------------------------------------------------------------
     # Every file / shell tool is rooted at this directory; paths that try to
     # escape it are rejected. Default is the `examples/workspace/` dir.
@@ -123,6 +128,7 @@ def load_settings(dotenv_path: str | Path | None = None) -> Settings:
         os.environ.get("CODING_AGENT_WORKSPACE", "examples/workspace")
     ).resolve()
     trace_dir = Path(os.environ.get("CODING_AGENT_TRACE_DIR", "traces")).resolve()
+    mcp_config_raw = os.environ.get("CODING_AGENT_MCP_CONFIG", "").strip()
 
     return Settings(
         provider=provider_raw,  # type: ignore[arg-type]
@@ -146,6 +152,7 @@ def load_settings(dotenv_path: str | Path | None = None) -> Settings:
         transcript_compress_at=_get_int("CODING_AGENT_TRANSCRIPT_COMPRESS_AT", 20),
         subagent_max_iterations=_get_int("CODING_AGENT_SUBAGENT_MAX_ITERATIONS", 4),
         max_subagents=_get_int("CODING_AGENT_MAX_SUBAGENTS", 3),
+        mcp_config=Path(mcp_config_raw).resolve() if mcp_config_raw else None,
         workspace_root=workspace_root,
         trace_dir=trace_dir,
         trace_stdout=_get_bool("CODING_AGENT_TRACE_STDOUT", True),

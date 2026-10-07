@@ -79,3 +79,12 @@ def test_subagent_limits(monkeypatch, tmp_path):
     monkeypatch.setenv("CODING_AGENT_MAX_SUBAGENTS", "5")
     s = load_settings(dotenv_path=tmp_path / "nope.env")
     assert (s.subagent_max_iterations, s.max_subagents) == (2, 5)
+
+
+def test_mcp_config_unset_and_set(monkeypatch, tmp_path):
+    monkeypatch.delenv("CODING_AGENT_MCP_CONFIG", raising=False)
+    assert load_settings(dotenv_path=tmp_path / "nope.env").mcp_config is None
+    monkeypatch.setenv("CODING_AGENT_MCP_CONFIG", "examples/mcp_config.example.json")
+    s = load_settings(dotenv_path=tmp_path / "nope.env")
+    assert s.mcp_config is not None and s.mcp_config.is_absolute()
+    assert s.mcp_config.name == "mcp_config.example.json"

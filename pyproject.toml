@@ -30,6 +30,11 @@ dev = [
 ollama = [
     "langchain-ollama>=0.3.4",           # first release with validate_model_on_init
 ]
+# Tools from Model Context Protocol servers (see docs/mcp.md).
+mcp = [
+    "langchain-mcp-adapters>=0.1.0",
+    "mcp>=1.9.0",                        # FastMCP, used by the test fixture server
+]
 
 [project.scripts]
 coding-agent = "coding_agent.cli:main"

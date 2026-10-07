@@ -17,7 +17,9 @@ Node responsibilities (mapped to the article)
 
 Component 6 (bounded subagents) adds no node: it is a *tool*,
 ``spawn_subagent``, that runs this same graph again at ``depth=1`` with a
-read-only toolset. See ``subagents.py``.
+read-only toolset. See ``subagents.py``. Tools from MCP servers
+(``mcp_tools.py``) join the parent's toolset and flow through ``act``
+like any built-in tool.
 
 Edges
 -----
@@ -47,6 +49,7 @@ from coding_agent.compression import compress_transcript
 from coding_agent.config import Settings
 from coding_agent.context import collect_workspace_facts
 from coding_agent.llm import build_chat_model
+from coding_agent.mcp_tools import load_mcp_tools
 from coding_agent.prompts import build_prompt
 from coding_agent.state import (
     AgentState,
@@ -275,6 +278,10 @@ def build_agent_graph(
     tools = build_tools(settings, permission_gate=permission_gate)
     if depth > 0:
         tools = subagent_toolset(tools)
+    else:
+        # MCP tools are for the parent only (subagents are read-only), so
+        # don't even start the servers for a child. `[]` when unconfigured.
+        tools += load_mcp_tools(settings, permission_gate=permission_gate)
     if depth < SUBAGENT_MAX_DEPTH:
 
         def run_child(task: str, child_settings: Settings, label: str) -> AgentState:
@@ -295,6 +302,11 @@ def build_agent_graph(
                 settings, run_child=run_child, permission_gate=permission_gate
             )
         )
+    names = [t.name for t in tools]
+    if len(names) != len(set(names)):
+        dupes = sorted({n for n in names if names.count(n) > 1})
+        raise ValueError(f"Duplicate tool names: {dupes}")
+
     model = build_chat_model(
         settings, callbacks=callbacks, fake_responses=fake_responses
     )
