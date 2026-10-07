@@ -8,7 +8,7 @@ version = "0.2.0"
 description = "A LangGraph implementation of the coding-agent architecture described in Sebastian Raschka's 'Components of a Coding Agent'."
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "Educational use" }
+license = { text = "MIT" }
 authors = [{ name = "Brendan Lynskey" }]
 
 dependencies = [

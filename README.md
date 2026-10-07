@@ -209,7 +209,7 @@ covered without spending a token. CI runs the same suite on Python 3.10,
 
 ## License
 
-Educational use. Code provided as-is.
+[MIT](LICENSE).
 
 ## References
 
