@@ -155,8 +155,11 @@ returns scripted `AIMessage`s in order. That lets us test:
 * the tools' sandbox (`tests/test_tools.py`)
 * the workspace context collector (`tests/test_context.py`)
 * the compression policy (`tests/test_compression.py`)
+* every subagent bound (`tests/test_subagents.py`)
+* MCP loading, gating and clipping against a local fixture server
+  (`tests/test_mcp_tools.py`)
 
-…without spending a token, in 0.3 seconds. That's not just a cost
+…without spending a token, in a few seconds. That's not just a cost
 optimisation — it's what lets you iterate on the agent loop with the
 confidence of a normal test suite.
 
