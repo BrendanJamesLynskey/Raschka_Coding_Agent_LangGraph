@@ -15,6 +15,12 @@ Node responsibilities (mapped to the article)
                  ``settings.transcript_compress_at``.
 * ``finalize`` — Lifts the model's final answer out of the transcript.
 
+Component 6 (bounded subagents) adds no node: it is a *tool*,
+``spawn_subagent``, that runs this same graph again at ``depth=1`` with a
+read-only toolset. See ``subagents.py``. Tools from MCP servers
+(``mcp_tools.py``) join the parent's toolset and flow through ``act``
+like any built-in tool.
+
 Edges
 -----
     START ──> observe ──> choose
@@ -43,6 +49,7 @@ from coding_agent.compression import compress_transcript
 from coding_agent.config import Settings
 from coding_agent.context import collect_workspace_facts
 from coding_agent.llm import build_chat_model
+from coding_agent.mcp_tools import load_mcp_tools
 from coding_agent.prompts import build_prompt
 from coding_agent.state import (
     AgentState,
@@ -50,7 +57,12 @@ from coding_agent.state import (
     TranscriptEntry,
     initial_state,
 )
-from coding_agent.tools import build_tools
+from coding_agent.subagents import (
+    SUBAGENT_MAX_DEPTH,
+    build_spawn_subagent_tool,
+    subagent_toolset,
+)
+from coding_agent.tools import PermissionGate, always_allow, build_tools
 from coding_agent.trace import TracingCallbackHandler
 
 
@@ -88,6 +100,9 @@ def _make_choose(model, tools: list[BaseTool]):
                     f"({state['max_iterations']}). "
                     "Increase CODING_AGENT_MAX_ITERATIONS or simplify the task."
                 ),
+                # Machine-readable reason, so callers (e.g. the subagent
+                # tool) needn't parse the human-readable message above.
+                "error": "max_iterations",
             }
 
         prompt = build_prompt(state)
@@ -244,9 +259,54 @@ def build_agent_graph(
     *,
     callbacks: Sequence[BaseCallbackHandler] | None = None,
     fake_responses: Sequence[AIMessage] | None = None,
+    fake_subagent_responses: Sequence[AIMessage] | None = None,
+    permission_gate: PermissionGate = always_allow,
+    depth: int = 0,
 ):
-    """Compile the LangGraph state machine for the configured provider."""
-    tools = build_tools(settings)
+    """Compile the LangGraph state machine for the configured provider.
+
+    ``depth`` is the only difference between the main agent and a
+    subagent: ``0`` builds the parent (full toolset + ``spawn_subagent``),
+    ``1`` builds a bounded, read-only child. See ``subagents.py``.
+
+    ``fake_subagent_responses`` is the child's script for the ``fake``
+    provider. Parent and child need *separate* scripts — a single shared
+    list would interleave unpredictably as the child's calls consumed the
+    parent's responses. Every child replays the script from the start,
+    so a test can reason about each spawn in isolation.
+    """
+    tools = build_tools(settings, permission_gate=permission_gate)
+    if depth > 0:
+        tools = subagent_toolset(tools)
+    else:
+        # MCP tools are for the parent only (subagents are read-only), so
+        # don't even start the servers for a child. `[]` when unconfigured.
+        tools += load_mcp_tools(settings, permission_gate=permission_gate)
+    if depth < SUBAGENT_MAX_DEPTH:
+
+        def run_child(task: str, child_settings: Settings, label: str) -> AgentState:
+            # Re-enter the public entry point one level deeper: same graph,
+            # its own tracer (run_label), its own fake script.
+            child_final, _ = run_agent(
+                task,
+                child_settings,
+                fake_responses=fake_subagent_responses,
+                permission_gate=permission_gate,
+                run_label=label,
+                depth=depth + 1,
+            )
+            return child_final
+
+        tools.append(
+            build_spawn_subagent_tool(
+                settings, run_child=run_child, permission_gate=permission_gate
+            )
+        )
+    names = [t.name for t in tools]
+    if len(names) != len(set(names)):
+        dupes = sorted({n for n in names if names.count(n) > 1})
+        raise ValueError(f"Duplicate tool names: {dupes}")
+
     model = build_chat_model(
         settings, callbacks=callbacks, fake_responses=fake_responses
     )
@@ -277,13 +337,17 @@ def run_agent(
     settings: Settings,
     *,
     fake_responses: Sequence[AIMessage] | None = None,
+    fake_subagent_responses: Sequence[AIMessage] | None = None,
     extra_callbacks: Sequence[BaseCallbackHandler] | None = None,
     run_label: str | None = None,
+    permission_gate: PermissionGate = always_allow,
+    depth: int = 0,
 ) -> tuple[AgentState, TracingCallbackHandler]:
     """One-call entry point: run the agent and return the final state + tracer.
 
     Returns both so callers can inspect the full transcript, the trace
-    records, or both.
+    records, or both. ``depth`` is set by ``spawn_subagent``; leave it at
+    ``0`` when calling this yourself.
     """
     tracer = TracingCallbackHandler(
         trace_dir=settings.trace_dir,
@@ -292,7 +356,12 @@ def run_agent(
     )
     callbacks = [tracer, *(extra_callbacks or [])]
     compiled = build_agent_graph(
-        settings, callbacks=callbacks, fake_responses=fake_responses
+        settings,
+        callbacks=callbacks,
+        fake_responses=fake_responses,
+        fake_subagent_responses=fake_subagent_responses,
+        permission_gate=permission_gate,
+        depth=depth,
     )
     initial = initial_state(user_request, max_iterations=settings.max_iterations)
     # LangGraph's per-call recursion_limit needs to comfortably exceed the

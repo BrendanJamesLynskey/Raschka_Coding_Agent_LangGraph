@@ -39,3 +39,52 @@ def test_openai_provider_recognised(monkeypatch, tmp_path):
     s = load_settings(dotenv_path=tmp_path / "nope.env")
     assert s.provider == "openai"
     assert s.openai_api_key == "sk-test"
+
+
+def test_ollama_provider_defaults(monkeypatch, tmp_path):
+    monkeypatch.setenv("CODING_AGENT_PROVIDER", "ollama")
+    for key in ["OLLAMA_MODEL", "OLLAMA_BASE_URL", "OLLAMA_NUM_CTX"]:
+        monkeypatch.delenv(key, raising=False)
+    s = load_settings(dotenv_path=tmp_path / "nope.env")
+    assert s.provider == "ollama"
+    assert s.ollama_model == "qwen3.5:9b"
+    assert s.ollama_base_url == "http://localhost:11434"
+    assert s.ollama_num_ctx == 16384
+
+
+def test_ollama_env_overrides(monkeypatch, tmp_path):
+    monkeypatch.setenv("CODING_AGENT_PROVIDER", "OLLAMA")  # case-insensitive
+    monkeypatch.setenv("OLLAMA_MODEL", "qwen2.5:0.5b")
+    monkeypatch.setenv("OLLAMA_BASE_URL", "http://gpu-box:11434")
+    monkeypatch.setenv("OLLAMA_NUM_CTX", "32768")
+    s = load_settings(dotenv_path=tmp_path / "nope.env")
+    assert s.provider == "ollama"
+    assert s.ollama_model == "qwen2.5:0.5b"
+    assert s.ollama_base_url == "http://gpu-box:11434"
+    assert s.ollama_num_ctx == 32768
+
+
+def test_unknown_provider_message_lists_ollama(monkeypatch, tmp_path):
+    monkeypatch.setenv("CODING_AGENT_PROVIDER", "llamacpp")
+    with pytest.raises(ValueError, match="ollama"):
+        load_settings(dotenv_path=tmp_path / "nope.env")
+
+
+def test_subagent_limits(monkeypatch, tmp_path):
+    for key in ["CODING_AGENT_SUBAGENT_MAX_ITERATIONS", "CODING_AGENT_MAX_SUBAGENTS"]:
+        monkeypatch.delenv(key, raising=False)
+    s = load_settings(dotenv_path=tmp_path / "nope.env")
+    assert (s.subagent_max_iterations, s.max_subagents) == (4, 3)
+    monkeypatch.setenv("CODING_AGENT_SUBAGENT_MAX_ITERATIONS", "2")
+    monkeypatch.setenv("CODING_AGENT_MAX_SUBAGENTS", "5")
+    s = load_settings(dotenv_path=tmp_path / "nope.env")
+    assert (s.subagent_max_iterations, s.max_subagents) == (2, 5)
+
+
+def test_mcp_config_unset_and_set(monkeypatch, tmp_path):
+    monkeypatch.delenv("CODING_AGENT_MCP_CONFIG", raising=False)
+    assert load_settings(dotenv_path=tmp_path / "nope.env").mcp_config is None
+    monkeypatch.setenv("CODING_AGENT_MCP_CONFIG", "examples/mcp_config.example.json")
+    s = load_settings(dotenv_path=tmp_path / "nope.env")
+    assert s.mcp_config is not None and s.mcp_config.is_absolute()
+    assert s.mcp_config.name == "mcp_config.example.json"

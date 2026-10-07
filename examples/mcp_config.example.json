@@ -1,0 +1,7 @@
+{
+  "tools": {
+    "transport": "stdio",
+    "command": "node",
+    "args": ["../MCP_Gateway_Playground/servers/tools-server/dist/index.js"]
+  }
+}
