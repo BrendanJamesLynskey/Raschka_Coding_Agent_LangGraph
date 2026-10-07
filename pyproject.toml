@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "raschka-coding-agent-langgraph"
-version = "0.1.0"
+version = "0.2.0"
 description = "A LangGraph implementation of the coding-agent architecture described in Sebastian Raschka's 'Components of a Coding Agent'."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -12,7 +12,7 @@ license = { text = "Educational use" }
 authors = [{ name = "Brendan Lynskey" }]
 
 dependencies = [
-    "langgraph>=0.2.50",
+    "langgraph>=0.2.57",                 # <=0.2.56 rejects a node returning {}
     "langchain-core>=0.3.20",
     "langchain-google-genai>=2.0.0",
     "langchain-openai>=0.2.10",          # used for DeepSeek (OpenAI-compatible API)
@@ -24,7 +24,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0",
-    "pytest-asyncio>=0.23",
+    "pytest-asyncio>=0.23.5",            # 0.23.0-0.23.4 crash on collection with pytest 8
 ]
 # Local open-weights models via an Ollama server (see docs/providers.md).
 ollama = [
@@ -32,8 +32,11 @@ ollama = [
 ]
 # Tools from Model Context Protocol servers (see docs/mcp.md).
 mcp = [
-    "langchain-mcp-adapters>=0.1.0",
-    "mcp>=1.9.0",                        # FastMCP, used by the test fixture server
+    "langchain-mcp-adapters>=0.2.0",
+    # The adapters import APIs newer than their declared minimums; these
+    # floors are the oldest combination verified to pass tests/test_mcp_tools.py.
+    "langchain-core>=1.0.0",
+    "mcp>=1.12.0",                       # also provides FastMCP for the test fixture
 ]
 
 [project.scripts]

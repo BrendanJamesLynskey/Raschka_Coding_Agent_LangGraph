@@ -24,10 +24,17 @@ _MERMAID = re.compile(r"```mermaid\n(.*?)\n```", re.DOTALL)
 
 
 def _normalise(mermaid: str) -> list[str]:
-    # Compare as a sorted list of lines: any added/removed node or edge is
-    # caught, but the *order* langgraph happens to emit edges in (which
-    # differs between langgraph releases) is not.
-    return sorted(line.strip() for line in mermaid.splitlines() if line.strip())
+    """Reduce mermaid source to the graph itself, as a sorted line list.
+
+    Two things vary between library releases without the graph changing:
+    the config header (YAML front matter vs. a ``%%{init}%%`` line) and
+    the order edges are emitted in. So we keep only what follows the
+    ``graph TD;`` line, and sort it. Any added or removed node or edge
+    still changes the result.
+    """
+    lines = [line.strip() for line in mermaid.splitlines() if line.strip()]
+    body = lines[next(i for i, line in enumerate(lines) if line.startswith("graph ")):]
+    return sorted(body)
 
 
 @pytest.mark.parametrize("path", render.DOCS_WITH_DIAGRAM, ids=lambda p: p.name)

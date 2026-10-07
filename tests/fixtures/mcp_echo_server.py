@@ -6,8 +6,9 @@ the tests are about the *plumbing* (loading, prefixing, gating, clipping,
 the sync bridge), not about what the tools compute.
 """
 
-from __future__ import annotations
-
+# No `from __future__ import annotations` here, unlike the rest of the repo:
+# older FastMCP releases inspect tool annotations with issubclass() and
+# crash on the string annotations that import produces.
 from mcp.server.fastmcp import FastMCP
 
 # WARNING level keeps the per-request INFO lines out of the test output.

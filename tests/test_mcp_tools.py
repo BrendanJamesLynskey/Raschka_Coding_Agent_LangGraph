@@ -146,7 +146,11 @@ def test_output_is_clipped_to_tool_output_limit(raw_tools):
 
 def test_tool_error_becomes_string_not_exception(raw_tools):
     out = _wrap(raw_tools, "add").invoke({"a": "not-a-number", "b": 1})
-    assert out.startswith("Error executing tool add")
+    # Newer adapters return the server's error as content; older ones raise
+    # ToolException, which our wrapper turns into "ERROR running ...".
+    # Either way the model gets a string, and the graph keeps running.
+    assert isinstance(out, str)
+    assert "Error executing tool add" in out
 
 
 # ---------------------------------------------------------------------------
